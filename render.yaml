@@ -2,7 +2,7 @@ services:
   - type: web
     name: adaptive-cutoff-demo
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install .
     startCommand: python -m adaptive_cutoff_demo.dashboard
     envVars:
       - key: PYTHON_VERSION
