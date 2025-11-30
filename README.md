@@ -18,19 +18,18 @@ This dashboard provides an interactive visualization of adaptive cutoff mechanis
 
 1. Clone this repository:
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/abmazitov/adaptive-cutoff-demo.git
 cd adaptive-cutoff-demo
 ```
 
 2. Install the package and dependencies:
 ```bash
-pip install -r requirements.txt
 pip install -e .
 ```
 
 ### Requirements
 
-This package depends on the `adaptive-cutoff` branch of the metatrain package from GitHub. The installation is handled automatically via `requirements.txt`.
+This package depends on the `adaptive-cutoff` branch of the `metatrain` package from GitHub. The installation is handled automatically. 
 
 ## Usage
 
@@ -103,7 +102,6 @@ adaptive-cutoff-demo/
 │   ├── __init__.py
 │   └── dashboard.py
 ├── pyproject.toml
-├── requirements.txt
 └── README.md
 ```
 
