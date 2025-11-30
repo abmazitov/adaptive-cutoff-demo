@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adaptive-cutoff-demo"
+version = "0.1.0"
+description = "Interactive dashboard for visualizing adaptive cutoff behavior in atomic systems"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    {name = "Arslan Mazitov"},
+]
+dependencies = [
+    "ase",
+    "dash",
+    "dash-bootstrap-components",
+    "numpy",
+    "plotly",
+    "torch",
+    "metatrain @ git+https://github.com/metatensor/metatrain.git@adaptive-cutoff",
+]
+
+[project.urls]
+Homepage = "https://github.com/metatensor/metatrain"
+
+[project.scripts]
+adaptive-cutoff-dashboard = "adaptive_cutoff_demo.dashboard:main"
