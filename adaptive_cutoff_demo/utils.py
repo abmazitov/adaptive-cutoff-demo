@@ -4,8 +4,8 @@ import torch
 from typing import List, Optional, Union
 from metatomic.torch import systems_to_torch, NeighborListOptions
 from metatensor.torch import Labels
-from metatrain.pet.modules.structures import (
-    concatenate_structures,
+from metatrain.pet.modules.structures import concatenate_structures
+from metatrain.pet.modules.adaptive_cutoff import (
     get_effective_num_neighbors,
     get_exponential_cutoff_weights,
     get_gaussian_cutoff_weights,
