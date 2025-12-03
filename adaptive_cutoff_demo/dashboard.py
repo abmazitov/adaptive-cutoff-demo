@@ -119,6 +119,18 @@ app.layout = dbc.Container(
                             ],
                         ),
                         html.Br(),
+                        html.Label("Probe Cutoff Step Size:"),
+                        dcc.Slider(
+                            id="step-size-slider",
+                            min=0.01,
+                            max=1.0,
+                            step=0.01,
+                            value=0.1,
+                            marks={i * 0.2: str(i * 0.2) for i in range(0, 6)},
+                            tooltip={"placement": "bottom", "always_visible": True},
+                            updatemode="drag",
+                        ),
+                        html.Br(),
                         dbc.Button(
                             "Regenerate Random Atoms",
                             id="regenerate-button",
@@ -170,11 +182,12 @@ def regenerate_seed(n_clicks):
         Input("max-neighbors-slider", "value"),
         Input("width-slider", "value"),
         Input("beta-slider", "value"),
+        Input("step-size-slider", "value"),
         Input("random-seed", "data"),
     ],
 )
 def update_visualization(
-    num_atoms, special_y, weight_function, max_neighbors, width, beta, seed
+    num_atoms, special_y, weight_function, max_neighbors, width, beta, step_size, seed
 ):
     """Update the visualization based on slider values."""
 
@@ -190,6 +203,7 @@ def update_visualization(
         max_num_neighbors=max_neighbors,
         width=width,
         beta=beta,
+        step_size=step_size,
     )
 
     # Create atom visualization

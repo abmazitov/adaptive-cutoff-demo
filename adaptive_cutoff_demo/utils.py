@@ -20,6 +20,7 @@ def compute_adaptive_cutoff(
     max_num_neighbors: float = 2.0,
     width: float = 0.5,
     beta: float = 1.0,
+    step_size: float = 0.1,
 ):
     """Compute the adaptive cutoff for the central atom."""
     positions, centers, edge_distances, system_indices, num_nodes = atoms_to_tensors(
@@ -29,7 +30,7 @@ def compute_adaptive_cutoff(
     probe_cutoffs = torch.arange(
         0.5,
         options.cutoff - 0.9,
-        0.1,
+        step_size,
         device=edge_distances.device,
         dtype=edge_distances.dtype,
     )
