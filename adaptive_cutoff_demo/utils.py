@@ -21,8 +21,22 @@ def compute_adaptive_cutoff(
     width: float = 0.5,
     beta: float = 1.0,
     step_size: float = 0.1,
+    atom_index: int = 0,
+    return_all_cutoffs: bool = False,
 ):
-    """Compute the adaptive cutoff for the central atom."""
+    """Compute the adaptive cutoff for a specific atom or all atoms.
+
+    Args:
+        atoms: Atomic structure
+        options: Neighbor list options
+        weight_function: Type of weight function ('gaussian' or 'exponential')
+        max_num_neighbors: Maximum number of neighbors
+        width: Width parameter for weight function
+        beta: Beta parameter for exponential weight function
+        step_size: Step size for probe cutoff grid
+        atom_index: Index of atom to compute cutoff for (default: 0 for central atom)
+        return_all_cutoffs: If True, return cutoffs for all atoms instead of just one
+    """
     positions, centers, edge_distances, system_indices, num_nodes = atoms_to_tensors(
         atoms, options
     )
@@ -61,14 +75,67 @@ def compute_adaptive_cutoff(
 
     adapted_cutoffs = probe_cutoffs @ cutoffs_weights.T
 
-    # Get cutoff for central atom (index 0)
-    central_atom_cutoff = adapted_cutoffs[0].item()
+    if return_all_cutoffs:
+        # Return cutoffs for all atoms plus additional data for specified atom
+        return (
+            adapted_cutoffs.cpu().numpy(),
+            effective_num_neighbors[atom_index].cpu().numpy(),
+            probe_cutoffs.cpu().numpy(),
+        )
+    else:
+        # Get cutoff for specified atom
+        atom_cutoff = adapted_cutoffs[atom_index].item()
+        return (
+            atom_cutoff,
+            effective_num_neighbors[atom_index].cpu().numpy(),
+            probe_cutoffs.cpu().numpy(),
+        )
 
-    return (
-        central_atom_cutoff,
-        effective_num_neighbors[0].cpu().numpy(),
-        probe_cutoffs.cpu().numpy(),
-    )
+
+def compute_special_atom_cutoffs_vs_position(
+    num_atoms: int,
+    y_positions: np.ndarray,
+    seed: int,
+    options: NeighborListOptions,
+    special_atom_idx: int = 0,
+    weight_function: str = "gaussian",
+    max_num_neighbors: float = 2.0,
+    width: float = 0.5,
+    beta: float = 1.0,
+    step_size: float = 0.1,
+):
+    """Compute adaptive cutoff for special atom at different y positions.
+
+    Args:
+        num_atoms: Number of random atoms
+        y_positions: Array of y positions to compute cutoff for
+        seed: Random seed for atom positions
+        options: Neighbor list options
+        weight_function: Type of weight function
+        max_num_neighbors: Maximum number of neighbors
+        width: Width parameter
+        beta: Beta parameter for exponential
+        step_size: Step size for probe cutoff grid
+
+    Returns:
+        Array of cutoff values corresponding to each y position
+    """
+    cutoffs = []
+    for y_pos in y_positions:
+        atoms = create_atom_configuration(num_atoms, y_pos, seed=seed)
+        # Special atom is at index -1 (last atom)
+        cutoff, _, _ = compute_adaptive_cutoff(
+            atoms,
+            options,
+            weight_function=weight_function,
+            max_num_neighbors=max_num_neighbors,
+            width=width,
+            beta=beta,
+            step_size=step_size,
+            atom_index=special_atom_idx,
+        )
+        cutoffs.append(cutoff)
+    return np.array(cutoffs)
 
 
 def create_atom_configuration(num_atoms: int, special_atom_y: float, seed: int = 42):
