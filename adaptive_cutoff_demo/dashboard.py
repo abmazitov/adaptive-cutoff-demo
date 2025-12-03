@@ -58,10 +58,10 @@ app.layout = dbc.Container(
                             updatemode="drag",
                         ),
                         html.Br(),
-                        html.Label("Special Atom Y Position (-10 to 10):"),
+                        html.Label("Special Atom Y Position (0 to 10):"),
                         dcc.Slider(
                             id="special-y-slider",
-                            min=-10,
+                            min=0,
                             max=10,
                             step=0.1,
                             value=2.0,
@@ -205,7 +205,7 @@ def compute_cutoff_curve(
     num_atoms, weight_function, max_neighbors, width, beta, step_size, seed
 ):
     """Compute and cache the cutoff vs position curve."""
-    y_positions = np.linspace(-10, 10, 50)
+    y_positions = np.linspace(0, 10, 50)
     cutoffs_vs_y = compute_special_atom_cutoffs_vs_position(
         num_atoms,
         y_positions,
