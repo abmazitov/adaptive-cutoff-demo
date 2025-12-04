@@ -8,9 +8,42 @@ from metatrain.pet.modules.structures import concatenate_structures
 from metatrain.pet.modules.adaptive_cutoff import (
     get_effective_num_neighbors,
     get_exponential_cutoff_weights,
-    get_gaussian_cutoff_weights,
 )
 from metatrain.utils.neighbor_lists import get_system_with_neighbor_lists
+
+
+def get_gaussian_cutoff_weights(
+    effective_num_neighbors: torch.Tensor,
+    probe_cutoffs: torch.Tensor,
+    max_num_neighbors: float,
+    num_nodes: int,
+    width: float = 0.5,
+) -> torch.Tensor:
+    """
+    Computes the weights for each probe cutoff based on
+    the effective number of neighbors using Gaussian weights
+    centered at the expected number of neighbors.
+
+    :param effective_num_neighbors: Effective number of neighbors for each center atom
+        and probe cutoff.
+    :param probe_cutoffs: Probe cutoff distances.
+    :param max_num_neighbors: Target maximum number of neighbors per atom.
+    :param num_nodes: Total number of center atoms.
+    :param width: Width of the Gaussian function.
+    :return: Weights for each probe cutoff.
+    """
+    max_num_neighbors_t = torch.as_tensor(
+        max_num_neighbors, device=effective_num_neighbors.device
+    )
+
+    diff = effective_num_neighbors - max_num_neighbors_t
+    weights = torch.exp(-0.5 * (diff / width) ** 2)
+
+    # row-wise normalization, with small epsilon to avoid division by zero
+    weights_sum = weights.sum(dim=1, keepdim=True)
+    weights = weights / (weights_sum + 1e-12)
+
+    return weights
 
 
 def compute_adaptive_cutoff(
