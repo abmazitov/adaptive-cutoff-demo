@@ -56,6 +56,7 @@ def compute_adaptive_cutoff(
     step_size: float = 0.1,
     atom_index: int = 0,
     return_all_cutoffs: bool = False,
+    return_weights: bool = False,
 ):
     """Compute the adaptive cutoff for a specific atom or all atoms.
 
@@ -69,6 +70,7 @@ def compute_adaptive_cutoff(
         step_size: Step size for probe cutoff grid
         atom_index: Index of atom to compute cutoff for (default: 0 for central atom)
         return_all_cutoffs: If True, return cutoffs for all atoms instead of just one
+        return_weights: If True, also return the cutoff weights
     """
     positions, centers, edge_distances, system_indices, num_nodes = atoms_to_tensors(
         atoms, options
@@ -110,19 +112,25 @@ def compute_adaptive_cutoff(
 
     if return_all_cutoffs:
         # Return cutoffs for all atoms plus additional data for specified atom
-        return (
+        result = (
             adapted_cutoffs.cpu().numpy(),
             effective_num_neighbors[atom_index].cpu().numpy(),
             probe_cutoffs.cpu().numpy(),
         )
+        if return_weights:
+            result = result + (cutoffs_weights[atom_index].cpu().numpy(),)
+        return result
     else:
         # Get cutoff for specified atom
         atom_cutoff = adapted_cutoffs[atom_index].item()
-        return (
+        result = (
             atom_cutoff,
             effective_num_neighbors[atom_index].cpu().numpy(),
             probe_cutoffs.cpu().numpy(),
         )
+        if return_weights:
+            result = result + (cutoffs_weights[atom_index].cpu().numpy(),)
+        return result
 
 
 def compute_special_atom_cutoffs_vs_position(
