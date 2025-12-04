@@ -259,16 +259,19 @@ def update_visualization(
     positions = atoms.get_positions()
 
     # Compute adaptive cutoffs for all atoms (single computation)
-    all_cutoffs, eff_num_neighbors, probe_cutoffs = compute_adaptive_cutoff(
-        atoms,
-        options,
-        weight_function=weight_function,
-        max_num_neighbors=max_neighbors,
-        width=width,
-        beta=beta,
-        step_size=step_size,
-        atom_index=0,  # For effective neighbors plot
-        return_all_cutoffs=True,
+    all_cutoffs, eff_num_neighbors, probe_cutoffs, cutoff_weights = (
+        compute_adaptive_cutoff(
+            atoms,
+            options,
+            weight_function=weight_function,
+            max_num_neighbors=max_neighbors,
+            width=width,
+            beta=beta,
+            step_size=step_size,
+            atom_index=0,  # For effective neighbors plot
+            return_all_cutoffs=True,
+            return_weights=True,
+        )
     )
 
     # Extract central atom cutoff
@@ -376,9 +379,10 @@ def update_visualization(
         height=500,
     )
 
-    # Create effective number of neighbors plot
+    # Create effective number of neighbors plot with dual y-axis
     fig_nef = go.Figure()
 
+    # Primary y-axis: Effective number of neighbors
     fig_nef.add_trace(
         go.Scatter(
             x=probe_cutoffs,
@@ -387,6 +391,20 @@ def update_visualization(
             line=dict(color="rgba(0, 100, 0, 0.4)", width=2),
             marker=dict(color="darkgreen", size=8, line=dict(color="white", width=1)),
             name="Effective # Neighbors",
+            yaxis="y",
+        )
+    )
+
+    # Secondary y-axis: Cutoff weights
+    fig_nef.add_trace(
+        go.Scatter(
+            x=probe_cutoffs,
+            y=cutoff_weights,
+            mode="lines+markers",
+            line=dict(color="rgba(200, 0, 200, 0.4)", width=2),
+            marker=dict(color="purple", size=6, line=dict(color="white", width=1)),
+            name=f"{weight_function.capitalize()} Weights",
+            yaxis="y2",
         )
     )
 
@@ -396,7 +414,8 @@ def update_visualization(
         line_dash="dash",
         line_color="red",
         annotation_text=f"Max N = {max_neighbors}",
-        annotation_position="right",
+        annotation_position="left",
+        annotation=dict(xanchor="left", x=0.02, y=max_neighbors + 0.3),
     )
 
     # Add vertical line for adaptive cutoff
@@ -411,7 +430,16 @@ def update_visualization(
     fig_nef.update_layout(
         title="Effective Number of Neighbors vs Probe Cutoff",
         xaxis_title="Probe Cutoff (Å)",
-        yaxis_title="Effective Number of Neighbors",
+        yaxis=dict(
+            title="Effective Number of Neighbors",
+            side="left",
+        ),
+        yaxis2=dict(
+            title="Cutoff Weights",
+            side="right",
+            overlaying="y",
+            range=[0, max(cutoff_weights) * 1.1],
+        ),
         showlegend=True,
         legend=dict(
             x=0.02,
