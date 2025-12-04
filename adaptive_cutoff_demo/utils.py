@@ -34,7 +34,11 @@ def get_gaussian_cutoff_weights_smooth(
     max_num_neighbors_t = torch.as_tensor(max_num_neighbors, device=effective_num_neighbors.device)
 
     diff = effective_num_neighbors - max_num_neighbors_t
+    
+    # pretend that the last cutoff has the exact number of neighbors, if it has fewer
+    diff[:,-1][diff[:,-1]<0] = torch.max(diff[:,-1][diff[:,-1]<0], torch.zeros_like(diff[:,-1][diff[:,-1]<0]))
     weights = torch.exp(-0.5 * (diff / width) ** 2)
+    
     # weights = 1/(1 + (diff / width) ** 2) 
 
     # row-wise normalization, with small epsilon to avoid division by zero
@@ -76,6 +80,24 @@ def smooth_cutoff(
     x2 = x*x
     return torch.exp(-x2/(1-x2))
 
+def bump_cutoff(grid: torch.Tensor, r_cut: torch.Tensor, delta: float) -> torch.Tensor:
+    """
+    Cosine cutoff function.
+
+    :param grid: Distances at which to evaluate the cutoff function.
+    :param r_cut: Cutoff radius for each node.
+    :param delta: Width of the cutoff region.
+    :return: Values of the cutoff function at the specified distances.
+    """
+    mask_bigger = grid >= r_cut
+    mask_smaller = grid <= r_cut - delta
+    grid = (grid - r_cut + delta) / delta
+    f = 0.5 *(1+torch.tanh(1/torch.tan(grid)))
+
+    f[mask_bigger] = 0.0
+    f[mask_smaller] = 1.0
+    return f
+
 
 def get_effective_num_neighbors_smooth(
     edge_distances: torch.Tensor,
@@ -100,11 +122,12 @@ def get_effective_num_neighbors_smooth(
         # Use 2.5x the spacing for a smooth step function
         if len(probe_cutoffs) > 1:
             probe_spacing = probe_cutoffs[1] - probe_cutoffs[0]
-            width = 2.5 * probe_spacing
+            width = 2 * probe_spacing
         else:
             width = 0.5  # fallback for single probe cutoff
 
-    weights = smooth_cutoff(
+    print("cutoff width", width)
+    weights = bump_cutoff(
         edge_distances.unsqueeze(0), probe_cutoffs.unsqueeze(1),
         width
     )
@@ -128,6 +151,7 @@ def compute_adaptive_cutoff(
     options: NeighborListOptions,
     weight_function: str = "gaussian",
     max_num_neighbors: float = 2.0,
+    cutoff_width: float = 0.5,
     width: float = 0.5,
     beta: float = 1.0,
     step_size: float = 0.1,
@@ -164,6 +188,7 @@ def compute_adaptive_cutoff(
         probe_cutoffs,
         centers,
         num_nodes,
+        width=cutoff_width,
     )
 
     if weight_function == "gaussian":
@@ -210,6 +235,7 @@ def compute_special_atom_cutoffs_vs_position(
     special_atom_idx: int = 0,
     weight_function: str = "gaussian",
     max_num_neighbors: float = 2.0,
+    cutoff_width: float = 0.5,
     width: float = 0.5,
     beta: float = 1.0,
     step_size: float = 0.1,
@@ -239,6 +265,7 @@ def compute_special_atom_cutoffs_vs_position(
             options,
             weight_function=weight_function,
             max_num_neighbors=max_num_neighbors,
+            cutoff_width=cutoff_width,
             width=width,
             beta=beta,
             step_size=step_size,

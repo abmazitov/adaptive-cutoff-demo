@@ -93,7 +93,19 @@ app.layout = dbc.Container(
                             updatemode="mouseup",
                         ),
                         html.Br(),
-                        html.Label("Width:"),
+                        html.Label("Cutoff function width:"),
+                        dcc.Slider(
+                            id="cutoff-width-slider",
+                            min=0.1,
+                            max=2.0,
+                            step=0.1,
+                            value=0.5,
+                            marks={i * 0.5: str(i * 0.5) for i in range(0, 5)},
+                            tooltip={"placement": "bottom", "always_visible": True},
+                            updatemode="mouseup",
+                        ),
+                        html.Br(),
+                        html.Label("Nk selection width:"),
                         dcc.Slider(
                             id="width-slider",
                             min=0.1,
@@ -195,6 +207,7 @@ def regenerate_seed(n_clicks):
         Input("num-atoms-slider", "value"),
         Input("weight-function", "value"),
         Input("max-neighbors-slider", "value"),
+        Input("cutoff-width-slider", "value"),
         Input("width-slider", "value"),
         Input("beta-slider", "value"),
         Input("step-size-slider", "value"),
@@ -203,7 +216,7 @@ def regenerate_seed(n_clicks):
 )
 
 def compute_cutoff_curve(
-    num_atoms, weight_function, max_neighbors, width, beta, step_size, seed
+    num_atoms, weight_function, max_neighbors, cutoff_width, width, beta, step_size, seed
 ):
     """Compute and cache the cutoff vs position curve."""
     y_positions = np.linspace(0, 10, 50)
@@ -214,7 +227,8 @@ def compute_cutoff_curve(
         options,
         weight_function=weight_function,
         max_num_neighbors=max_neighbors,
-        width=width,
+        cutoff_width=cutoff_width,
+        width=width,        
         beta=beta,
         step_size=step_size,
     )
@@ -236,6 +250,7 @@ def compute_cutoff_curve(
         State("num-atoms-slider", "value"),
         State("weight-function", "value"),
         State("max-neighbors-slider", "value"),
+        State("cutoff-width-slider", "value"),
         State("width-slider", "value"),
         State("beta-slider", "value"),
         State("step-size-slider", "value"),
@@ -248,6 +263,7 @@ def update_visualization(
     num_atoms,
     weight_function,
     max_neighbors,
+    cutoff_width,
     width,
     beta,
     step_size,
@@ -260,16 +276,19 @@ def update_visualization(
     positions = atoms.get_positions()
 
     # Compute adaptive cutoffs for all atoms (single computation)
-    all_cutoffs, eff_num_neighbors, probe_cutoffs, probe_weights = compute_adaptive_cutoff(
-        atoms,
-        options,
-        weight_function=weight_function,
-        max_num_neighbors=max_neighbors,
-        width=width,
-        beta=beta,
-        step_size=step_size,
-        atom_index=0,  # For effective neighbors plot
-        return_all_cutoffs=True,
+    all_cutoffs, eff_num_neighbors, probe_cutoffs, cutoff_weights = (
+        compute_adaptive_cutoff(
+            atoms,
+            options,
+            weight_function=weight_function,
+            max_num_neighbors=max_neighbors,
+            cutoff_width=cutoff_width,
+            width=width,
+            beta=beta,
+            step_size=step_size,
+            atom_index=0,  # For effective neighbors plot
+            return_all_cutoffs=True,
+        )
     )
 
     # Extract central atom cutoff
@@ -385,7 +404,7 @@ def update_visualization(
             y=eff_num_neighbors,
             mode="lines+markers",
             line=dict(color="rgba(0, 100, 0, 0.4)", width=2),
-            marker=dict(color="darkgreen", size=probe_weights[0]*500, line=dict(color="white", width=1)),
+            marker=dict(color="darkgreen", size=cutoff_weights[0]*200, line=dict(color="white", width=1)),
             name="Effective # Neighbors",
         )
     )
