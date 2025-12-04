@@ -55,7 +55,7 @@ app.layout = dbc.Container(
                             value=5,
                             marks={i: str(i) for i in range(1, 11)},
                             tooltip={"placement": "bottom", "always_visible": True},
-                            updatemode="drag",
+                            updatemode="mouseup",
                         ),
                         html.Br(),
                         html.Label("Special Atom Y Position (0 to 10):"),
@@ -67,7 +67,7 @@ app.layout = dbc.Container(
                             value=2.0,
                             marks={i: str(i) for i in range(-10, 11)},
                             tooltip={"placement": "bottom", "always_visible": True},
-                            updatemode="drag",
+                            updatemode="mouseup",
                         ),
                         html.Br(),
                         html.Label("Weight Function:"),
@@ -90,7 +90,7 @@ app.layout = dbc.Container(
                             value=2.0,
                             marks={i: str(i) for i in range(0, 11, 2)},
                             tooltip={"placement": "bottom", "always_visible": True},
-                            updatemode="drag",
+                            updatemode="mouseup",
                         ),
                         html.Br(),
                         html.Label("Width:"),
@@ -102,7 +102,7 @@ app.layout = dbc.Container(
                             value=0.5,
                             marks={i * 0.5: str(i * 0.5) for i in range(0, 5)},
                             tooltip={"placement": "bottom", "always_visible": True},
-                            updatemode="drag",
+                            updatemode="mouseup",
                         ),
                         html.Br(),
                         html.Div(
@@ -120,7 +120,7 @@ app.layout = dbc.Container(
                                         "placement": "bottom",
                                         "always_visible": True,
                                     },
-                                    updatemode="drag",
+                                    updatemode="mouseup",
                                 ),
                             ],
                         ),
@@ -134,7 +134,7 @@ app.layout = dbc.Container(
                             value=0.1,
                             marks={i * 0.2: str(i * 0.2) for i in range(0, 6)},
                             tooltip={"placement": "bottom", "always_visible": True},
-                            updatemode="drag",
+                            updatemode="mouseup",
                         ),
                         html.Br(),
                         dbc.Button(
@@ -201,6 +201,7 @@ def regenerate_seed(n_clicks):
         Input("random-seed", "data"),
     ],
 )
+
 def compute_cutoff_curve(
     num_atoms, weight_function, max_neighbors, width, beta, step_size, seed
 ):
@@ -259,7 +260,7 @@ def update_visualization(
     positions = atoms.get_positions()
 
     # Compute adaptive cutoffs for all atoms (single computation)
-    all_cutoffs, eff_num_neighbors, probe_cutoffs = compute_adaptive_cutoff(
+    all_cutoffs, eff_num_neighbors, probe_cutoffs, probe_weights = compute_adaptive_cutoff(
         atoms,
         options,
         weight_function=weight_function,
@@ -378,14 +379,13 @@ def update_visualization(
 
     # Create effective number of neighbors plot
     fig_nef = go.Figure()
-
     fig_nef.add_trace(
         go.Scatter(
             x=probe_cutoffs,
             y=eff_num_neighbors,
             mode="lines+markers",
             line=dict(color="rgba(0, 100, 0, 0.4)", width=2),
-            marker=dict(color="darkgreen", size=8, line=dict(color="white", width=1)),
+            marker=dict(color="darkgreen", size=probe_weights[0]*500, line=dict(color="white", width=1)),
             name="Effective # Neighbors",
         )
     )

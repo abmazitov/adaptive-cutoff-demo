@@ -13,6 +13,116 @@ from metatrain.pet.modules.adaptive_cutoff import (
 from metatrain.utils.neighbor_lists import get_system_with_neighbor_lists
 
 
+def get_gaussian_cutoff_weights_smooth(
+    effective_num_neighbors: torch.Tensor,
+    max_num_neighbors: float,
+    width: float = 0.5,
+) -> torch.Tensor:
+    """
+    Computes the weights for each probe cutoff based on
+    the effective number of neighbors using Gaussian weights
+    centered at the expected number of neighbors.
+
+    :param effective_num_neighbors: Effective number of neighbors for each center atom
+        and probe cutoff.
+    :param probe_cutoffs: Probe cutoff distances.
+    :param max_num_neighbors: Target maximum number of neighbors per atom.
+    :param num_nodes: Total number of center atoms.
+    :param width: Width of the Gaussian function.
+    :return: Weights for each probe cutoff.
+    """
+    max_num_neighbors_t = torch.as_tensor(max_num_neighbors, device=effective_num_neighbors.device)
+
+    diff = effective_num_neighbors - max_num_neighbors_t
+    weights = torch.exp(-0.5 * (diff / width) ** 2)
+    # weights = 1/(1 + (diff / width) ** 2) 
+
+    # row-wise normalization, with small epsilon to avoid division by zero
+    weights_sum = weights.sum(dim=1, keepdim=True)
+    weights = weights / weights_sum
+
+    return weights
+
+def cosine_cutoff(grid: torch.Tensor, r_cut: torch.Tensor, delta: float) -> torch.Tensor:
+    """
+    Cosine cutoff function.
+
+    :param grid: Distances at which to evaluate the cutoff function.
+    :param r_cut: Cutoff radius for each node.
+    :param delta: Width of the cutoff region.
+    :return: Values of the cutoff function at the specified distances.
+    """
+    mask_bigger = grid >= r_cut
+    mask_smaller = grid <= r_cut - delta
+    grid = (grid - r_cut + delta) / delta
+    f = 0.5 + 0.5 * torch.cos(torch.pi * grid)
+
+    f[mask_bigger] = 0.0
+    f[mask_smaller] = 1.0
+    return f
+
+def smooth_cutoff(
+    values: torch.Tensor, cutoff: torch.Tensor, 
+    width: float=0.0
+) -> torch.Tensor:
+    """Compute the smooth delta function values.
+    :param values: Input values (torch.Tensor).
+    :param center: Center value (torch.Tensor).
+    :param width: Width parameter (float).
+
+    :return: Smooth delta function values (torch.Tensor).
+    """
+    x = torch.min(values / cutoff, torch.ones_like(values))
+    x2 = x*x
+    return torch.exp(-x2/(1-x2))
+
+
+def get_effective_num_neighbors_smooth(
+    edge_distances: torch.Tensor,
+    probe_cutoffs: torch.Tensor,
+    centers: torch.Tensor,
+    num_nodes: int,
+    width: Optional[float] = None,
+) -> torch.Tensor:
+    """
+    Computes the effective number of neighbors for each probe cutoff.
+
+    :param edge_distances: Distances between centers and their neighbors.
+    :param probe_cutoffs: Probe cutoff distances.
+    :param centers: Indices of the center atoms.
+    :param num_nodes: Total number of center atoms.
+    :param width: Width of the cutoff function. If None, it will be
+        automatically determined from the probe cutoff spacing.
+    :return: Effective number of neighbors for each center atom and probe cutoff.
+    """
+    if width is None:
+        # Automatically determine width from probe cutoff spacing
+        # Use 2.5x the spacing for a smooth step function
+        if len(probe_cutoffs) > 1:
+            probe_spacing = probe_cutoffs[1] - probe_cutoffs[0]
+            width = 2.5 * probe_spacing
+        else:
+            width = 0.5  # fallback for single probe cutoff
+
+    weights = smooth_cutoff(
+        edge_distances.unsqueeze(0), probe_cutoffs.unsqueeze(1),
+        width
+    ) * edge_distances.unsqueeze(0)**2 # volume weighting
+    
+    probe_num_neighbors = torch.zeros(
+        (len(probe_cutoffs), num_nodes),
+        dtype=edge_distances.dtype,
+        device=edge_distances.device,
+    )
+    # Vectorized version: use scatter_add_ to accumulate weights for all probe
+    # cutoffs at once
+    centers_expanded = (
+        centers.unsqueeze(0).expand(len(probe_cutoffs), -1).to(torch.int64)
+    )
+    probe_num_neighbors.scatter_add_(1, centers_expanded, weights)
+    probe_num_neighbors = probe_num_neighbors.T.contiguous()
+    return probe_num_neighbors / 0.286241 # normalization factor to account for the form of the cutoff function
+
 def compute_adaptive_cutoff(
     atoms: ase.Atoms,
     options: NeighborListOptions,
@@ -49,7 +159,7 @@ def compute_adaptive_cutoff(
         dtype=edge_distances.dtype,
     )
 
-    effective_num_neighbors = get_effective_num_neighbors(
+    effective_num_neighbors = get_effective_num_neighbors_smooth(
         edge_distances,
         probe_cutoffs,
         centers,
@@ -57,11 +167,9 @@ def compute_adaptive_cutoff(
     )
 
     if weight_function == "gaussian":
-        cutoffs_weights = get_gaussian_cutoff_weights(
+        cutoffs_weights = get_gaussian_cutoff_weights_smooth(
             effective_num_neighbors,
-            probe_cutoffs,
             max_num_neighbors,
-            num_nodes,
             width=width,
         )
     else:  # exponential
@@ -81,6 +189,7 @@ def compute_adaptive_cutoff(
             adapted_cutoffs.cpu().numpy(),
             effective_num_neighbors[atom_index].cpu().numpy(),
             probe_cutoffs.cpu().numpy(),
+            cutoffs_weights.cpu().numpy()
         )
     else:
         # Get cutoff for specified atom
@@ -89,6 +198,7 @@ def compute_adaptive_cutoff(
             atom_cutoff,
             effective_num_neighbors[atom_index].cpu().numpy(),
             probe_cutoffs.cpu().numpy(),
+            cutoffs_weights.cpu().numpy()
         )
 
 
@@ -124,7 +234,7 @@ def compute_special_atom_cutoffs_vs_position(
     for y_pos in y_positions:
         atoms = create_atom_configuration(num_atoms, y_pos, seed=seed)
         # Special atom is at index -1 (last atom)
-        cutoff, _, _ = compute_adaptive_cutoff(
+        cutoff, _, _, _ = compute_adaptive_cutoff(
             atoms,
             options,
             weight_function=weight_function,
