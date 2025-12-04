@@ -37,6 +37,9 @@ def get_gaussian_cutoff_weights(
     )
 
     diff = effective_num_neighbors - max_num_neighbors_t
+    diff[:, -1] = torch.clamp(
+        diff[:, -1], min=0.0
+    )  # ensure last column is non-negative
     weights = torch.exp(-0.5 * (diff / width) ** 2)
 
     # row-wise normalization, with small epsilon to avoid division by zero
