@@ -80,7 +80,7 @@ def smooth_cutoff(
     x2 = x*x
     return torch.exp(-x2/(1-x2))
 
-def bump_cutoff(grid: torch.Tensor, r_cut: torch.Tensor, delta: float) -> torch.Tensor:
+def bump_cutoff(values: torch.Tensor, cutoff: torch.Tensor, width: float) -> torch.Tensor:
     """
     Cosine cutoff function.
 
@@ -89,10 +89,13 @@ def bump_cutoff(grid: torch.Tensor, r_cut: torch.Tensor, delta: float) -> torch.
     :param delta: Width of the cutoff region.
     :return: Values of the cutoff function at the specified distances.
     """
-    mask_bigger = grid >= r_cut
-    mask_smaller = grid <= r_cut - delta
-    grid = (grid - r_cut + delta) / delta
-    f = 0.5 *(1+torch.tanh(1/torch.tan(grid)))
+    mask_bigger = values >= cutoff
+    mask_smaller = values <= cutoff-width
+    scaled_values = (values - (cutoff-width )) / width
+    
+    f = 0.5 *(1+torch.tanh(1/torch.tan(torch.pi*scaled_values)))
+    #print("bump", values.shape, cutoff.shape, scaled_values.shape)
+    #print("cutoff", cutoff, values, f[0], f[:,0])
 
     f[mask_bigger] = 0.0
     f[mask_smaller] = 1.0
@@ -124,9 +127,8 @@ def get_effective_num_neighbors_smooth(
             probe_spacing = probe_cutoffs[1] - probe_cutoffs[0]
             width = 2 * probe_spacing
         else:
-            width = 0.5  # fallback for single probe cutoff
+            width = 0.5  # fallback for single probe cutoff    
 
-    print("cutoff width", width)
     weights = bump_cutoff(
         edge_distances.unsqueeze(0), probe_cutoffs.unsqueeze(1),
         width
