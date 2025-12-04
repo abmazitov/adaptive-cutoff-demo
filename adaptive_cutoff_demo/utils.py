@@ -107,7 +107,7 @@ def get_effective_num_neighbors_smooth(
     weights = smooth_cutoff(
         edge_distances.unsqueeze(0), probe_cutoffs.unsqueeze(1),
         width
-    ) * edge_distances.unsqueeze(0)**2 # volume weighting
+    )
     
     probe_num_neighbors = torch.zeros(
         (len(probe_cutoffs), num_nodes),
@@ -121,7 +121,7 @@ def get_effective_num_neighbors_smooth(
     )
     probe_num_neighbors.scatter_add_(1, centers_expanded, weights)
     probe_num_neighbors = probe_num_neighbors.T.contiguous()
-    return probe_num_neighbors / 0.286241 # normalization factor to account for the form of the cutoff function
+    return probe_num_neighbors  # / 0.286241 # normalization factor to account for the form of the cutoff function
 
 def compute_adaptive_cutoff(
     atoms: ase.Atoms,
