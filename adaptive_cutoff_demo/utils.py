@@ -33,15 +33,14 @@ def get_gaussian_cutoff_weights_smooth(
     """
     max_num_neighbors_t = torch.as_tensor(max_num_neighbors, device=effective_num_neighbors.device)
 
-    baseline = torch.linspace(0, 1, effective_num_neighbors.shape[1], device=effective_num_neighbors.device)
-    baseline[-1] = max_num_neighbors_t
-    
     diff = effective_num_neighbors - max_num_neighbors_t
-
     
-    
-    # pretend that the last cutoff has the exact number of neighbors, if it has fewer
-    #diff[:,-1][diff[:,-1]<0] = torch.max(diff[:,-1][diff[:,-1]<0], torch.zeros_like(diff[:,-1][diff[:,-1]<0]))
+    # add a baseline quadratic curve to the number of neighbors.
+    # the logic is that even when there are no atoms we want to 
+    # select a cutoff close to the maximum, and if there are many 
+    # we want to avoid going all the way to the larger cutoff possible.
+    # this makes the selection more stable.
+    baseline = max_num_neighbors_t*torch.linspace(0, 1, effective_num_neighbors.shape[1], device=effective_num_neighbors.device) **2    
     diff = diff + baseline.unsqueeze(0)
 
     weights = torch.exp(-0.5 * (diff / width) ** 2) 
@@ -286,7 +285,7 @@ def compute_special_atom_cutoffs_vs_position(
     return np.array(cutoffs)
 
 
-def create_atom_configuration(num_atoms: int, special_atom_y: float, seed: int = 42):
+def create_atom_configuration(num_atoms: int, special_atom_y: float, seed: int = 42, cutoff_outer=6.0) -> ase.Atoms:
     """Create atomic configuration with random positions on a plane."""
     np.random.seed(seed)
 
@@ -296,9 +295,9 @@ def create_atom_configuration(num_atoms: int, special_atom_y: float, seed: int =
 
     # Random atoms on the plane (excluding the special atom)
     for _ in range(num_atoms - 1):
-        x = np.random.uniform(-5, 5)
-        y = np.random.uniform(-5, 5)
-        positions.append([x, y, 0.0])
+        r = np.sqrt(np.random.uniform(0, 1))*cutoff_outer
+        t = np.random.uniform(0, 2*np.pi)
+        positions.append([r*np.cos(t), r*np.sin(t), 0.0])
 
     # Special atom at [0, special_atom_y, 0]
     positions.append([0.0, special_atom_y, 0.0])

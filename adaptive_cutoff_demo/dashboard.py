@@ -381,8 +381,8 @@ def update_visualization(
 
     fig_atoms.update_layout(
         title="Atomic Configuration (Top View, z=0)",
-        xaxis=dict(title="x (Å)", range=[-6, 6], scaleanchor="y", scaleratio=1),
-        yaxis=dict(title="y (Å)", range=[-10, 10]),
+        xaxis=dict(title="x (Å)", range=[-7, 7], scaleanchor="y", scaleratio=1),
+        yaxis=dict(title="y (Å)", range=[-7, 7]),
         showlegend=True,
         legend=dict(
             x=0.02,
