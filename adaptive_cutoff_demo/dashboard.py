@@ -46,14 +46,14 @@ app.layout = dbc.Container(
                 dbc.Col(
                     [
                         html.H4("Controls", className="mb-3"),
-                        html.Label("Number of Random Atoms (1-10):"),
+                        html.Label("Number of Random Atoms (1-50):"),
                         dcc.Slider(
                             id="num-atoms-slider",
                             min=1,
-                            max=10,
+                            max=50,
                             step=1,
                             value=5,
-                            marks={i: str(i) for i in range(1, 11)},
+                            marks={i: str(i) for i in range(5, 50, 5)},
                             tooltip={"placement": "bottom", "always_visible": True},
                             updatemode="mouseup",
                         ),
@@ -65,7 +65,7 @@ app.layout = dbc.Container(
                             max=10,
                             step=0.1,
                             value=2.0,
-                            marks={i: str(i) for i in range(-10, 11)},
+                            marks={i: str(i) for i in range(0, 11)},
                             tooltip={"placement": "bottom", "always_visible": True},
                             updatemode="mouseup",
                         ),
@@ -85,10 +85,10 @@ app.layout = dbc.Container(
                         dcc.Slider(
                             id="max-neighbors-slider",
                             min=0.5,
-                            max=10,
+                            max=20,
                             step=0.5,
                             value=2.0,
-                            marks={i: str(i) for i in range(0, 11, 2)},
+                            marks={i: str(i) for i in range(0, 21, 2)},
                             tooltip={"placement": "bottom", "always_visible": True},
                             updatemode="mouseup",
                         ),
@@ -404,7 +404,7 @@ def update_visualization(
             y=eff_num_neighbors,
             mode="lines+markers",
             line=dict(color="rgba(0, 100, 0, 0.4)", width=2),
-            marker=dict(color="darkgreen", size=cutoff_weights[0]*200, line=dict(color="white", width=1)),
+            marker=dict(color="darkgreen", size=2+cutoff_weights[0]*20/cutoff_weights[0].max(), line=dict(color="white", width=1)),
             name="Effective # Neighbors",
         )
     )

@@ -33,11 +33,18 @@ def get_gaussian_cutoff_weights_smooth(
     """
     max_num_neighbors_t = torch.as_tensor(max_num_neighbors, device=effective_num_neighbors.device)
 
+    baseline = torch.linspace(0, 1, effective_num_neighbors.shape[1], device=effective_num_neighbors.device)
+    baseline[-1] = max_num_neighbors_t
+    
     diff = effective_num_neighbors - max_num_neighbors_t
+
+    
     
     # pretend that the last cutoff has the exact number of neighbors, if it has fewer
-    diff[:,-1][diff[:,-1]<0] = torch.max(diff[:,-1][diff[:,-1]<0], torch.zeros_like(diff[:,-1][diff[:,-1]<0]))
-    weights = torch.exp(-0.5 * (diff / width) ** 2)
+    #diff[:,-1][diff[:,-1]<0] = torch.max(diff[:,-1][diff[:,-1]<0], torch.zeros_like(diff[:,-1][diff[:,-1]<0]))
+    diff = diff + baseline.unsqueeze(0)
+
+    weights = torch.exp(-0.5 * (diff / width) ** 2) 
     
     # weights = 1/(1 + (diff / width) ** 2) 
 
@@ -192,6 +199,8 @@ def compute_adaptive_cutoff(
         num_nodes,
         width=cutoff_width,
     )
+    
+    effective_num_neighbors = effective_num_neighbors
 
     if weight_function == "gaussian":
         cutoffs_weights = get_gaussian_cutoff_weights_smooth(
