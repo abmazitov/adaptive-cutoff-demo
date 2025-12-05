@@ -88,7 +88,7 @@ def smooth_cutoff(
 
 def bump_cutoff(values: torch.Tensor, cutoff: torch.Tensor, width: float) -> torch.Tensor:
     """
-    Cosine cutoff function.
+    Bump cutoff function.
 
     :param grid: Distances at which to evaluate the cutoff function.
     :param r_cut: Cutoff radius for each node.
